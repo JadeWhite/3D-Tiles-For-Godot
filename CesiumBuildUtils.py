@@ -20,11 +20,12 @@ CESIUM_NATIVE_DIR_EXT = "#cesium_godot/native"
 
 CESIUM_NATIVE_DIR_MODULE = "#modules/cesium_godot/native"
 
-OS_WIN = "nt"
+# All modern distros
+PLATFORM_LINUX = "linux"
 
-OS_LINUX = "posix"
+# This is for 64-bit Windows as well
+PLATFORM_WIN = "win32"
 
-# sys.platform value for macOS (os.name returns 'posix' for both Linux and macOS)
 PLATFORM_MACOS = "darwin"
 
 STATIC_TRIPLET = "x64-windows-static"
@@ -34,21 +35,18 @@ RELEASE_CONFIG = "Release"
 ezvcpkgFoundPath: str = ""
 
 
-def is_macos():
-    return sys.platform == PLATFORM_MACOS
-
-
 def get_compile_flags():
-    if os.name == OS_WIN:
+    if sys.platform == PLATFORM_WIN:
         return ["/std:c++20", "/Zc:__cplusplus", "/utf-8", "/bigobj"]
-    elif is_macos():
+    elif sys.platform == PLATFORM_MACOS:
         return ["-std=c++20", "-fexceptions", "-fPIC"]
-    elif os.name == OS_LINUX:
+    elif sys.platform == PLATFORM_LINUX:
         return ["-std=c++20", "-fexceptions", "-fpermissive", "-fPIC"]
+    return None
 
 
 def get_linker_flags():
-    if os.name == OS_WIN:
+    if sys.platform == PLATFORM_WIN:
         return ["/IGNORE:4217"]
     return []
 
@@ -58,7 +56,7 @@ def is_extension_target(argsDict) -> bool:
 
 
 def get_curl_lib_name() -> str:
-    if os.name == OS_WIN:
+    if sys.platform == PLATFORM_WIN:
         return "libcurl"
     return "curl"
 
@@ -274,12 +272,13 @@ def configure_native(argumentsDict):
 
 
 def determine_triplet():
-    if os.name == OS_WIN:
+    if sys.platform == PLATFORM_WIN:
         return "x64-windows-static"
-    if is_macos():
+    if sys.platform == PLATFORM_MACOS:
         return "arm64-osx"
-    if os.name == OS_LINUX:
+    if sys.platform == PLATFORM_LINUX:
         return "x64-linux"
+    return None
 
 
 def compile_native(argumentsDict):
@@ -303,11 +302,11 @@ def compile_native(argumentsDict):
 
     # TODO: Test if we can just do cmake --build for all platforms
     result = None
-    if os.name == OS_WIN:
+    if sys.platform == PLATFORM_WIN:
         result = build_native_win()
-    elif is_macos():
+    elif sys.platform == PLATFORM_MACOS:
         result = build_native_macos()
-    elif os.name == OS_LINUX:
+    elif sys.platform == PLATFORM_LINUX:
         result = build_native_linux()
     else:
         print(
@@ -375,11 +374,11 @@ def clean_cesium_definitions():
 def install_additional_libs():
     print("Installing additional libraries")
     vcpkgPath = find_ezvcpkg_path()
-    execExtension = ".exe" if os.name == OS_WIN else ""
+    execExtension = ".exe" if sys.platform == PLATFORM_WIN else ""
     executable = "%s/%s" % (vcpkgPath, "vcpkg" + execExtension)
     subprocess.run([executable, "install", "uriparser:%s" % (determine_triplet())])
     subprocess.run([executable, "install", "ada-url:%s" % (determine_triplet())])
-    if os.name == OS_WIN:
+    if sys.platform == PLATFORM_WIN:
         subprocess.run([executable, "install", "curl:%s" % (determine_triplet())])
 
 
