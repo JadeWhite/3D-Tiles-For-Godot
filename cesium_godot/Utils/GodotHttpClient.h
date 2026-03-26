@@ -20,6 +20,7 @@ using namespace godot;
 #include <functional>
 #include <vector>
 #include <string>
+#include <charconv>
 #include <sstream>
 #include <thread>
 #include <chrono>
@@ -118,11 +119,13 @@ private:
 		size_t portPos = hostPart.find(':');
 		if (portPos != std::string::npos) {
 			parts.host = hostPart.substr(0, portPos);
-			try {
-				parts.port = std::stoi(hostPart.substr(portPos + 1));
-			} catch (...) {
+			const std::string portStr = hostPart.substr(portPos + 1);
+			int port = 0;
+			auto [ptr, ec] = std::from_chars(portStr.data(), portStr.data() + portStr.size(), port);
+			if (ec != std::errc{} || ptr != portStr.data() + portStr.size()) {
 				return parts;
 			}
+			parts.port = port;
 		} else {
 			parts.host = hostPart;
 			parts.port = parts.use_tls ? 443 : 80;
