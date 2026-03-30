@@ -10,6 +10,7 @@
 *.so
 *.tcl
 .vscode
+.idea
 *.pdb
 *__pycache__/*
 .cache/*
