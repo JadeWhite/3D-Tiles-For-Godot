@@ -279,7 +279,7 @@ def determine_triplet(argumentsDict):
         arch = argumentsDict.get("arch", "arm64")
         if arch == "arm64":
             return "arm64-osx"
-        elif arch == "x86_64":
+        elif arch == "x64":
             return "x64-osx"
         else:
             print(f"[CESIUM] - Unknown macOS architecture: {arch}, defaulting to arm64-osx")

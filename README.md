@@ -61,8 +61,14 @@ scons compiledb=true arch=x64 compileTarget=extension debug_symbols=true
 
 * `debug_symbols=yes`: Include debug information (use no for release)
 
-**The build binaries will be at `godot3dtiles/bin/Godot3DTiles.windows.template_debug.x86_64.dll` for Windows, `godot3dtiles/bin/libGodot3DTiles.linux.template_debug.x86_64.so`**
+** The built binaries will be at:
 
+| Platform  | arch arg required | Built Binary Path                                                 |
+|-----------|-------------------|-------------------------------------------------------------------|
+| Windows   | x64               | `godot3dtiles/bin/Godot3DTiles.windows.template_debug.x86_64.dll` |
+| Linux     | x64               | `godot3dtiles/bin/libGodot3DTiles.linux.template_debug.x86_64.so` |
+| Mac Intel | x64               | `godot3dtiles/bin/Godot3DTiles.osx.template_debug.x86_64.dylib`   |
+| Mac ARM   | arm64             | `godot3dtiles/bin/Godot3DTiles.osx.template_debug.arm64.dylib`    |
 
 ## Double precision builds
 The plugin supports double precision mode for more accurate true origin navigation.
