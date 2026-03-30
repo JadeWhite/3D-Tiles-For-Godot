@@ -3,6 +3,7 @@ import subprocess
 import os
 import fnmatch
 import sys
+import shutil
 
 from SCons.Script import Dir
 
@@ -85,9 +86,9 @@ def get_compile_target_definition(argsDict) -> str:
     exit(1)
 
 
-def link_abseil_libs(env):
+def link_abseil_libs(env, argumentsDict):
     foundLibs: list[SCons.Node.FS.File] = env.Glob(
-        f"{find_ezvcpkg_path()}/packages/abseil_{determine_triplet()}/lib/*absl*.a"
+        f"{find_ezvcpkg_path()}/packages/abseil_{determine_triplet(argumentsDict)}/lib/*absl*.a"
     )
 
     # Dark magic to strip the lib prefix and the file extension
@@ -155,24 +156,25 @@ def clone_lite_html_if_needed():
     pass
 
 
-def build_litehtml_macos():
+def build_litehtml_macos(argumentsDict):
     """Build litehtml from source on macOS since no pre-built binaries exist."""
+    arch = argumentsDict.get("arch", "arm64")
     third_party_dir = scons_to_abs_path(ROOT_DIR_EXT + "/third_party")
-    source_dir = os.path.join(third_party_dir, "litehtml-src")
-    output_dir = os.path.join(third_party_dir, "litehtml", "macos")
+    source_dir = os.path.join(third_party_dir, "lite-html")
+    output_dir = os.path.join(third_party_dir, "litehtml", "macos", arch)
 
-    # Check if already built
+    # Check if already built for this architecture
     if os.path.exists(os.path.join(output_dir, "liblitehtml.a")):
-        print("litehtml already built for macOS, skipping...")
+        print(f"litehtml already built for macOS ({arch}), skipping...")
         return
 
     if not os.path.exists(source_dir):
         print("litehtml source not found at %s" % source_dir, file=sys.stderr)
         return
 
-    print("Building litehtml from source for macOS...")
+    print(f"Building litehtml from source for macOS ({arch})...")
 
-    build_dir = os.path.join(source_dir, "build-macos")
+    build_dir = os.path.join(source_dir, "build-macos-%s" % arch)
     os.makedirs(build_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -183,7 +185,7 @@ def build_litehtml_macos():
     result = subprocess.run([
         "cmake",
         "-DCMAKE_BUILD_TYPE=Release",
-        "-DCMAKE_OSX_ARCHITECTURES=arm64",
+        "-DCMAKE_OSX_ARCHITECTURES=%s" % arch,
         "-DLITEHTML_BUILD_TESTING=OFF",
         ".."
     ])
@@ -202,7 +204,6 @@ def build_litehtml_macos():
         return
 
     # Copy output libraries
-    import shutil
     for lib in ["liblitehtml.a", "libgumbo.a"]:
         src = os.path.join(build_dir, lib)
         if not os.path.exists(src):
@@ -245,7 +246,7 @@ def configure_native(argumentsDict):
     repoDirectory = scons_to_abs_path(repoDirectory)
     os.chdir(repoDirectory)
     # Assume you already have the triplet (for now)
-    triplet: str = determine_triplet()
+    triplet: str = determine_triplet(argumentsDict)
     os.environ["VCPKG_TRIPLET"] = triplet
     # Run Cmake with the /MT flag on
     result = subprocess.run(
@@ -271,11 +272,18 @@ def configure_native(argumentsDict):
     print("Configuration completed without any errors!")
 
 
-def determine_triplet():
+def determine_triplet(argumentsDict):
     if sys.platform == PLATFORM_WIN:
         return "x64-windows-static"
     if sys.platform == PLATFORM_MACOS:
-        return "arm64-osx"
+        arch = argumentsDict.get("arch", "arm64")
+        if arch == "arm64":
+            return "arm64-osx"
+        elif arch == "x86_64":
+            return "x64-osx"
+        else:
+            print(f"[CESIUM] - Unknown macOS architecture: {arch}, defaulting to arm64-osx")
+            return "arm64-osx"
     if sys.platform == PLATFORM_LINUX:
         return "x64-linux"
     return None
@@ -324,7 +332,7 @@ def build_native_linux():
 
 
 def build_native_macos():
-    return subprocess.run(["cmake", "--build", "."])
+    return subprocess.run(["cmake", "--build", ".", "-j"])
 
 
 def build_native_win():
@@ -371,15 +379,15 @@ def clean_cesium_definitions():
     print("Finished cleaning native definitions")
 
 
-def install_additional_libs():
+def install_additional_libs(argumentsDict):
     print("Installing additional libraries")
     vcpkgPath = find_ezvcpkg_path()
     execExtension = ".exe" if sys.platform == PLATFORM_WIN else ""
     executable = "%s/%s" % (vcpkgPath, "vcpkg" + execExtension)
-    subprocess.run([executable, "install", "uriparser:%s" % (determine_triplet())])
-    subprocess.run([executable, "install", "ada-url:%s" % (determine_triplet())])
+    subprocess.run([executable, "install", "uriparser:%s" % (determine_triplet(argumentsDict))])
+    subprocess.run([executable, "install", "ada-url:%s" % (determine_triplet(argumentsDict))])
     if sys.platform == PLATFORM_WIN:
-        subprocess.run([executable, "install", "curl:%s" % (determine_triplet())])
+        subprocess.run([executable, "install", "curl:%s" % (determine_triplet(argumentsDict))])
 
 
 def find_ms_build() -> str:
@@ -466,12 +474,12 @@ def scons_to_abs_path(path: str) -> str:
     return Dir(path).get_abspath()
 
 
-def find_ezvcpkg_include_path() -> str:
-    return f"{find_ezvcpkg_path()}/installed/{determine_triplet()}/include"
+def find_ezvcpkg_include_path(argumentsDict) -> str:
+    return f"{find_ezvcpkg_path()}/installed/{determine_triplet(argumentsDict)}/include"
 
 
-def find_ezvcpkg_lib_path() -> str:
-    return f"{find_ezvcpkg_path()}/installed/{determine_triplet()}/lib"
+def find_ezvcpkg_lib_path(argumentsDict) -> str:
+    return f"{find_ezvcpkg_path()}/installed/{determine_triplet(argumentsDict)}/lib"
 
 
 def get_root_dir() -> str:
